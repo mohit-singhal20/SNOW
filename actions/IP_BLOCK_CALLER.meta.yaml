@@ -1,0 +1,15 @@
+pack: st2_viacbs_pack
+enabled: true
+runner_type: orquesta
+name: IP_BLOCK_CALLER
+entry_point: workflows/IP_BLOCK_CALLER.yaml
+description: For calling IP BLOCK Workflow
+parameters:
+  Assignment_group:
+    type: string
+    required: true
+    description: Assignment Group Name
+  tag_val:
+    type: string
+    required: true
+    description: Tag Name
