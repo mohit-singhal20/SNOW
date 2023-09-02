@@ -1,0 +1,11 @@
+---
+name: CREATE_INC_LIST
+runner_type: python-script
+enabled: true
+entry_point: "CREATE_INC_LIST.py"
+description: Creating list of incidents
+parameters:
+    payload:
+       type: array
+       required: true
+       position: 1
