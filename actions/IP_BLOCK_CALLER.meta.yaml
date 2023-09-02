@@ -1,4 +1,4 @@
-pack: st2_viacbs_pack
+pack: snow
 enabled: true
 runner_type: orquesta
 name: IP_BLOCK_CALLER
