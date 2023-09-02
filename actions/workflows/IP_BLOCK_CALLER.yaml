@@ -1,0 +1,105 @@
+version: 1.0
+# This is Caller Workflow for IP Block.
+# This Workflow will fetch All the Open 
+# Incidents based on Assignment Group and SNOW Tag
+# then It will call main IP BLOCK Workflow for 
+# Each Incident one by one
+tasks:
+  # [100, 100]
+  Fetch_assignment_group_sys_id:
+    # This Action Will fetch sys id of Assignment Group
+    action: servicenow.get_non_structured
+    input:
+      log_level: DEBUG
+      table: sys_user_group
+      query: name=<% ctx(Assignment_group) %>
+    next:
+      - when: <% succeeded() %>
+        publish:
+          - a_sys_id: <% result().result[0].sys_id %>
+        # #629e47
+        do: Get_Tag_Sys_id
+      - when: <% failed() %>
+        publish:
+          - stderr: <% result().stderr %>
+          - stdout: "IP BLOCK Workflow Failed While Fetching details for Assignment group <% ctx(Assignment_group) %>"
+        do: fail
+  # [200, 200]
+  Get_Tag_Sys_id:
+    # This Action Will fetch sys id of SNOW Tag
+    action: servicenow.get_non_structured
+    input:
+      log_level: DEBUG
+      table: label
+      query: name=<% ctx(tag_val) %>
+    next:
+      - when: <% succeeded() %>
+        publish:
+          - t_sys_id: <% result().result[0].sys_id %>
+        # #aa5dd1
+        do: get_inc
+      - when: <% failed() %>
+        publish:
+          - stderr: <% result().stderr %>
+          - stdout: "IP BLOCK Workflow Failed While Fetching details for Tag <% ctx(tag_val) %>"
+        do: fail
+  # [300, 300]
+  get_inc:
+    # This Action Will fetch All Open Incidents 
+    # based on Assignment Group and SNOW Tag
+    action: servicenow.get_non_structured
+    input:
+      log_level: DEBUG
+      table: incident
+      query: "sys_tags.<% ctx(t_sys_id) %>=<% ctx(t_sys_id) %>^assignment_group=<% ctx(a_sys_id) %>^state=1"
+    next:
+      - when: <% succeeded() %>
+        publish:
+          - inc_data: <% result().result %>
+        # #fd9d32
+        do: create_list
+      - when: <% failed() %>
+        publish:
+          - stderr: <% result().stderr %>
+          - stdout: "IP BLOCK Workflow Failed While Fetching details Incidents (Open or New) for tag <% ctx(tag_val) %> and Assignment group <% ctx(Assignment_group)  %>"
+        # #d14c83
+        do: no_ticket
+  # [641, 309]
+  no_ticket:
+    action: core.noop
+    next:
+      - when: <% succeeded() %>
+        publish:
+          - stdout: "No Incident Available Available for Execution."
+          - stderr: "No Incident Available Available for Execution."
+  # [400, 400]
+  create_list:
+    # For Creating List of Incident Number and Sys_id
+    # Two Seperate lists will be created
+    action: snow.CREATE_INC_LIST
+    input:
+      log_level: DEBUG
+      payload: <% ctx(inc_data) %>
+    next:
+      - when: <% succeeded() %>
+        publish:
+          - stderr: <% result().result.number_list %>
+          - stdout: <% result().result.sys_list %>
+          - stderr: "NA"
+          - stdout: "Incidents Fetched for Execution"
+        # #1072c6
+        do: noop
+      - when: <% failed() %>
+        publish:
+          - stderr: <% result().stderr %>
+          - stdout: "IP BLOCK Workflow Failed While Creating List of Incidents for Execution"
+        do: fail
+input:  # Input to This Workflow
+  - Assignment_group
+  - tag_val
+output:
+  - stdout: <% ctx(stdout) %>
+  - stderr: <% ctx(stderr) %>
+vars:
+  - stdout: ""
+  - stderr: ""
